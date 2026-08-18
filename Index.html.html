@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <!-- Load font Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <h1>Exodus BOLCC Song List</h1>
+      <button id="btnSearchToggle" class="icon-btn-round" aria-label="Cari lagu">🔍</button>
+    </div>
+    <div class="search-box" id="searchBox">
+      <input type="text" id="searchInput" placeholder="Cari judul lagu...">
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- View: List Lagu -->
+    <section id="view-list" class="view active">
+      <ul id="songList" class="song-list"></ul>
+      <p id="emptyState" class="empty-state" style="display:none;">Lagu tidak ditemukan.</p>
+    </section>
+
+    <!-- View: Detail Lagu -->
+    <section id="view-detail" class="view">
+      <div class="detail-header">
+        <h2 id="songTitle"></h2>
+        <button id="btnBack" class="btn-back">Kembali &rarr;</button>
+      </div>
+
+      <img id="songThumb" class="song-thumb" style="display:none;" alt="Preview gambar lagu" onerror="this.style.display='none';">
+
+      <div class="meta-grid" id="songMeta"></div>
+
+      <div class="transpose-bar">
+        <div class="key-buttons" id="keyButtons"></div>
+      </div>
+
+      <div id="chordSheet" class="chord-sheet"></div>
+
+      <div class="back-row bottom-back">
+        <button id="btnBackBottom" class="btn-back">Kembali &rarr;</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal fullscreen untuk preview gambar -->
+  <div id="imageModal" class="image-modal">
+    <span id="modalClose" class="modal-close">&times;</span>
+    <img id="modalImg" class="modal-img" alt="Preview penuh">
+  </div>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>

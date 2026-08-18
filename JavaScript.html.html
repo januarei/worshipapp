@@ -1,0 +1,262 @@
+<script>
+let allSongs = [];
+let currentSong = null;
+let transposeSteps = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+  google.script.run
+    .withSuccessHandler(onSongsLoaded)
+    .withFailureHandler(err => console.error('Gagal ambil daftar lagu:', err))
+    .getSongList();
+
+  document.getElementById('btnSearchToggle').addEventListener('click', toggleSearchBox);
+  document.getElementById('searchInput').addEventListener('input', onSearch);
+
+  document.getElementById('btnBack').addEventListener('click', showListView);
+  document.getElementById('btnBackBottom').addEventListener('click', showListView);
+
+  document.getElementById('songThumb').addEventListener('click', () => openImageModal(currentSong.imageUrl));
+  document.getElementById('imageModal').addEventListener('click', closeImageModal);
+  document.getElementById('modalClose').addEventListener('click', closeImageModal);
+});
+
+function toggleSearchBox() {
+  const box = document.getElementById('searchBox');
+  box.classList.toggle('active');
+  if (box.classList.contains('active')) document.getElementById('searchInput').focus();
+}
+
+function onSongsLoaded(songs) {
+  // urut ascending berdasarkan judul (A→Z)
+  allSongs = [...songs].sort((a, b) =>
+    a.judul.localeCompare(b.judul, 'id', { sensitivity: 'base' }));
+  renderList(allSongs);
+}
+
+function onSearch(e) {
+  const kw = e.target.value.toLowerCase();
+  const filtered = allSongs.filter(s => s.judul.toLowerCase().includes(kw));
+  renderList(filtered);
+}
+
+function renderList(songs) {
+  const ul = document.getElementById('songList');
+  const empty = document.getElementById('emptyState');
+  ul.innerHTML = '';
+
+  // Pisahkan lagu yang di-pin dan tidak
+  let pinnedSongs = songs.filter(s => s.pinned);
+  const restSongs = songs.filter(s => !s.pinned);
+
+  // LOGIKA URUTAN: Urutkan pinnedSongs berdasarkan kolom 'urutan' secara ascending (1,2,3..)
+  pinnedSongs.sort((a, b) => {
+    // Jika kolom urutan kosong atau bukan angka, berikan nilai 999 agar ditaruh di bawah
+    const urutanA = parseInt(a.urutan) || 999;
+    const urutanB = parseInt(b.urutan) || 999;
+    return urutanA - urutanB;
+  });
+
+  empty.style.display = (pinnedSongs.length + restSongs.length) ? 'none' : 'block';
+
+  if (pinnedSongs.length) {
+    // Label diubah sesuai revisi sebelumnya
+    ul.appendChild(sectionLabel('📌 Ibadah Minggu Ini'));
+    pinnedSongs.forEach(s => ul.appendChild(buildSongItem(s)));
+  }
+
+  if (restSongs.length) {
+    if (pinnedSongs.length) ul.appendChild(sectionLabel('Semua Lagu'));
+    restSongs.forEach(s => ul.appendChild(buildSongItem(s)));
+  }
+}
+
+function sectionLabel(text) {
+  const li = document.createElement('li');
+  li.className = 'list-section-label';
+  li.textContent = text;
+  return li;
+}
+
+function buildSongItem(s) {
+  const li = document.createElement('li');
+  const thumbSrc = s.imageUrl || '';
+
+  // Mengaplikasikan warna dari Sheet ke class title
+  li.innerHTML = `
+    ${thumbSrc ? `<img class="thumb" src="${thumbSrc}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb'}));">` : `<div class="thumb"></div>`}
+    <span class="text-col">
+      <span class="title" style="color: ${s.color}">${s.judul}</span>
+      <span class="sub">${s.author} • Key ${s.key}</span>
+    </span>`;
+
+  li.addEventListener('click', () => openSong(s.id));
+  return li;
+}
+
+function openSong(id) {
+  google.script.run
+    .withSuccessHandler(onSongLoaded)
+    .withFailureHandler(err => console.error('Gagal ambil detail lagu:', err))
+    .getSongById(id);
+}
+
+function onSongLoaded(song) {
+  currentSong = song;
+  transposeSteps = 0;
+  
+  // Mengaplikasikan warna dari Sheet ke judul lagu di halaman detail
+  const titleEl = document.getElementById('songTitle');
+  titleEl.textContent = song.judul;
+  titleEl.style.color = song.color; 
+
+  // Mengaplikasikan warna dari Sheet ke area lirik (chordSheet)
+  document.getElementById('chordSheet').style.color = song.color;
+
+  const thumb = document.getElementById('songThumb');
+  if (song.imageUrl) {
+    thumb.src = song.imageUrl;
+    thumb.style.display = 'block';
+  } else {
+    thumb.removeAttribute('src');
+    thumb.style.display = 'none';
+  }
+
+  document.getElementById('songMeta').innerHTML = `
+    <div>Author: ${song.author}</div>
+    <div>Genre: ${song.genre}</div>
+  `;
+  buildKeyButtons(song.key);
+  renderChordSheet();
+  showDetailView();
+}
+
+function renderChordSheet() {
+  const lines = currentSong.lyrics.split('\n');
+  let html = '';
+  lines.forEach(line => {
+    if (line.trim() === '') { html += '<br>'; return; }
+    if (!line.includes('[')) {
+      // baris judul section, mis. "Verse 1:"
+      html += `<span class="section-title">${line}</span>`;
+      return;
+    }
+    html += renderLine(transposeLine(line, transposeSteps)) + '<br>';
+  });
+  document.getElementById('chordSheet').innerHTML = html;
+}
+
+// ---------- Rendering chord+lirik jadi pasangan chord-di-atas-kata ----------
+function renderLine(line) {
+  let html = '';
+  const firstBracket = line.indexOf('[');
+  if (firstBracket > 0) {
+    html += pairHtml('', line.slice(0, firstBracket));
+  }
+  const regex = /\[([^\]]+)\]([^\[]*)/g;
+  let m;
+  while ((m = regex.exec(line)) !== null) {
+    html += pairHtml(m[1], m[2] || '\u00A0');
+  }
+  return html;
+}
+function pairHtml(chord, lyric) {
+  return `<span class="pair"><span class="chord">${chord}</span><span class="lyric">${lyric}</span></span>`;
+}
+
+// ---------- Transpose ----------
+const SHARPS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const FLATS  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+function transposeLine(line, steps) {
+  if (steps === 0) return line;
+  return line.replace(/\[([^\]]+)\]/g, (m, chord) => '[' + transposeChord(chord, steps) + ']');
+}
+
+function transposeChord(chord, steps) {
+  if (!steps) return chord;
+  const m = chord.match(/^([A-G])(#|b)?(.*)$/);
+  if (!m) return chord;
+  const [, root, acc, rest] = m;
+  const noteName = root + (acc || '');
+  let idx = SHARPS.indexOf(noteName);
+  if (idx === -1) idx = FLATS.indexOf(noteName);
+  if (idx === -1) return chord;
+
+  let bassSuffix = '';
+  let mainRest = rest;
+  const bassMatch = rest.match(/\/([A-G])(#|b)?/);
+  if (bassMatch) {
+    mainRest = rest.slice(0, bassMatch.index);
+    const bIdx = SHARPS.indexOf(bassMatch[1] + (bassMatch[2] || '')) >= 0
+      ? SHARPS.indexOf(bassMatch[1] + (bassMatch[2] || ''))
+      : FLATS.indexOf(bassMatch[1] + (bassMatch[2] || ''));
+    const newBassIdx = ((bIdx + steps) % 12 + 12) % 12;
+    bassSuffix = '/' + SHARPS[newBassIdx] + rest.slice(bassMatch.index + bassMatch[0].length);
+  }
+
+  const newIdx = ((idx + steps) % 12 + 12) % 12;
+  return SHARPS[newIdx] + mainRest + bassSuffix;
+}
+
+// ---------- Tombol pilihan key (C, C#, D, ... B) ----------
+const ALL_KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function buildKeyButtons(originalKeyStr) {
+  const container = document.getElementById('keyButtons');
+  container.innerHTML = '';
+  const baseIdx = getNoteIndex(originalKeyStr);
+  transposeSteps = 0;
+
+  ALL_KEYS.forEach((note, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = note;
+    if (idx === baseIdx) btn.classList.add('active');
+    btn.addEventListener('click', () => selectKey(note, idx));
+    container.appendChild(btn);
+  });
+}
+
+function selectKey(note, idx) {
+  const baseIdx = getNoteIndex(currentSong.key);
+  transposeSteps = ((idx - baseIdx) % 12 + 12) % 12;
+
+  document.querySelectorAll('#keyButtons button').forEach(b =>
+    b.classList.toggle('active', b.textContent === note));
+
+  renderChordSheet();
+}
+
+function getNoteIndex(keyStr) {
+  const m = String(keyStr).match(/^([A-G])(#|b)?/);
+  if (!m) return 0;
+  const note = m[1] + (m[2] || '');
+  let idx = SHARPS.indexOf(note);
+  if (idx === -1) idx = FLATS.indexOf(note);
+  return idx === -1 ? 0 : idx;
+}
+
+// ---------- Preview gambar fullscreen ----------
+function openImageModal(url) {
+  if (!url) return;
+  document.getElementById('modalImg').src = url;
+  document.getElementById('imageModal').classList.add('active');
+}
+function closeImageModal(e) {
+  // klik di mana pun pada overlay (termasuk tombol X) akan menutup modal,
+  // tapi klik di atas gambar itu sendiri tidak menutup (biar bisa pinch-zoom)
+  if (e.target.id === 'modalImg') return;
+  document.getElementById('imageModal').classList.remove('active');
+}
+
+// ---------- Navigasi antar view ----------
+function showListView() {
+  document.getElementById('view-list').classList.add('active');
+  document.getElementById('view-detail').classList.remove('active');
+}
+function showDetailView() {
+  document.getElementById('view-list').classList.remove('active');
+  document.getElementById('view-detail').classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>

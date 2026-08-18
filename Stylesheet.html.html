@@ -1,0 +1,137 @@
+<style>
+  * { box-sizing: border-box; }
+  :root { --topbar-h: 59px; } /* tinggi total .topbar: padding(12+12) + tombol(34) + border(1) */
+  body {
+    margin: 0;
+    font-family: -apple-system, Roboto, Arial, sans-serif;
+    background: #f7f5f0;
+    color: #222;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    background: #f0eee7; padding: 12px 16px;
+    border-bottom: 1px solid #ddd;
+    height: var(--topbar-h);
+  }
+  .topbar-row { display: flex; justify-content: space-between; align-items: center; }
+  .topbar h1 { 
+    font-size: 18px; margin: 0; 
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+  }
+  .icon-btn-round {
+    width: 34px; height: 34px; border-radius: 50%; border: none;
+    background: #2563eb; color: #fff; font-size: 15px; flex-shrink: 0;
+  }
+  .search-box {
+    display: none; position: absolute; top: 52px; right: 16px;
+    width: min(70vw, 260px); background: #fff; border: 1px solid #ccc;
+    border-radius: 8px; padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  }
+  .search-box.active { display: block; }
+  .search-box input {
+    width: 100%; padding: 10px 12px; font-size: 15px;
+    border: 1px solid #ccc; border-radius: 8px;
+  }
+  .view { display: none; padding: 12px 16px 40px; }
+  .view.active { display: block; }
+
+  .song-list { list-style: none; margin: 0; padding: 0; }
+  .song-list li {
+    padding: 10px 8px; border-bottom: 1px solid #e5e5e5;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .song-list li .thumb {
+    width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+    flex-shrink: 0; background: #ddd; cursor: pointer;
+  }
+  .song-list li .text-col { display: flex; flex-direction: column; cursor: pointer; }
+  .song-list li .title { 
+    font-weight: 600; font-size: 15px; 
+    font-family: 'Poppins', sans-serif; 
+  }
+  .song-list li .sub { font-size: 12px; color: #777; }
+  .empty-state { color: #888; text-align: center; padding: 24px; }
+
+  .list-section-label {
+    font-size: 12px; font-weight: 700; color: #999;
+    text-transform: uppercase; letter-spacing: .04em;
+    padding: 12px 8px 4px !important; border-bottom: none !important;
+  }
+
+  .detail-header {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; margin-bottom: 4px;
+  }
+  #songTitle { 
+    margin: 0; font-size: 20px; 
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .back-row.bottom-back { display: flex; justify-content: flex-end; margin-top: 20px; }
+  .btn-back {
+    background: none; border: none; color: #2563eb;
+    font-size: 15px; padding: 6px 4px; white-space: nowrap;
+  }
+
+  .song-thumb {
+    width: 100%; max-height: 200px; object-fit: cover;
+    border-radius: 10px; margin: 8px 0 12px; cursor: zoom-in;
+    display: block;
+  }
+
+  .image-modal {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.92);
+    align-items: center; justify-content: center;
+  }
+  .image-modal.active { display: flex; }
+  .modal-img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 18px;
+    color: #fff; font-size: 32px; line-height: 1;
+    cursor: pointer; z-index: 101;
+  }
+
+  .meta-grid {
+    font-size: 13px; color: #555; margin-bottom: 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px;
+  }
+
+  /* REVISI: Floating chord bar compact & rata kiri */
+  .transpose-bar {
+    display: flex; align-items: center;
+    background: #eee; 
+    padding: 4px 0; /* padding dikurangi agar compact dan tepi rata */
+    font-size: 13px; margin: 0 -16px 16px; 
+    position: sticky;
+    top: var(--topbar-h, 59px); /* Sticky menempel pada topbar */
+    z-index: 20; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .key-buttons {
+    display: flex; gap: 2px; overflow-x: auto; width: 100%; 
+    padding: 0 8px 2px 4px; /* padding-left kecil agar mentok kiri */
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+  }
+  .key-buttons button {
+    flex: 0 0 auto; min-width: 28px; padding: 4px 6px; border-radius: 4px;
+    border: 1px solid #ccc; background: #fff; font-size: 12px; font-weight: 700; color: #333;
+  }
+  .key-buttons button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+  .chord-sheet { line-height: 2.4; font-size: 14px; }
+  .chord-sheet .section-title {
+    font-weight: 700; margin: 18px 0 6px; display: block;
+  }
+  .pair { display: inline-block; position: relative; padding-top: 1.1em; margin-right: 2px; }
+  .pair .chord {
+    position: absolute; top: -0.2em; left: 0;
+    color: #2563eb; font-weight: 700; font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .pair .lyric { white-space: pre; }
+</style>
