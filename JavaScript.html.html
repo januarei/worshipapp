@@ -10,7 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     .getSongList();
 
   document.getElementById('btnSearchToggle').addEventListener('click', toggleSearchBox);
-  document.getElementById('searchInput').addEventListener('input', onSearch);
+  
+  // HAPUS event onSearch yang lama, GANTI dengan applyFilters untuk input text dan dropdown
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+  document.getElementById('genreFilter').addEventListener('change', applyFilters);
 
   document.getElementById('btnBack').addEventListener('click', showListView);
   document.getElementById('btnBackBottom').addEventListener('click', showListView);
@@ -27,15 +30,41 @@ function toggleSearchBox() {
 }
 
 function onSongsLoaded(songs) {
-  // urut ascending berdasarkan judul (A→Z)
+  // Urut ascending berdasarkan judul (A→Z)
   allSongs = [...songs].sort((a, b) =>
     a.judul.localeCompare(b.judul, 'id', { sensitivity: 'base' }));
+    
+  // LOGIKA BARU: Ambil semua genre yang ada, hapus duplikat, abaikan yang kosong
+  const genres = [...new Set(allSongs.map(s => s.genre).filter(Boolean))];
+  genres.sort(); // Urutkan nama genre sesuai abjad A-Z
+  
+  // Masukkan genre ke dalam dropdown
+  const genreSelect = document.getElementById('genreFilter');
+  genres.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = g;
+    genreSelect.appendChild(opt);
+  });
+
   renderList(allSongs);
 }
 
-function onSearch(e) {
-  const kw = e.target.value.toLowerCase();
-  const filtered = allSongs.filter(s => s.judul.toLowerCase().includes(kw));
+// FUNGSI BARU: Menggantikan fungsi onSearch() yang lama
+function applyFilters() {
+  const kw = document.getElementById('searchInput').value.toLowerCase();
+  const selectedGenre = document.getElementById('genreFilter').value;
+
+  const filtered = allSongs.filter(s => {
+    // Cek apakah judul cocok
+    const matchKw = s.judul.toLowerCase().includes(kw);
+    // Cek apakah genre cocok (jika ALL, tampilkan semua)
+    const matchGenre = selectedGenre === "ALL" || s.genre === selectedGenre;
+    
+    // Lagu harus lolos kedua syarat
+    return matchKw && matchGenre;
+  });
+
   renderList(filtered);
 }
 

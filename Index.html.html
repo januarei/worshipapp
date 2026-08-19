@@ -9,10 +9,16 @@
 </head>
 <body>
 
-  <header class="topbar">
+ <header class="topbar">
     <div class="topbar-row">
       <h1>Exodus BOLCC Song List</h1>
-      <button id="btnSearchToggle" class="icon-btn-round" aria-label="Cari lagu">🔍</button>
+      <!-- Tambahkan pembungkus dan elemen select di sini -->
+      <div class="action-buttons">
+        <select id="genreFilter" class="genre-select">
+          <option value="ALL">Category</option>
+        </select>
+        <button id="btnSearchToggle" class="icon-btn-round" aria-label="Cari lagu">🔍</button>
+      </div>
     </div>
     <div class="search-box" id="searchBox">
       <input type="text" id="searchInput" placeholder="Cari judul lagu...">
