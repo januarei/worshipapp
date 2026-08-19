@@ -2,20 +2,17 @@
 <html>
 <head>
   <base target="_top">
-  <!-- Load font Poppins -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
   <?!= include('Stylesheet'); ?>
 </head>
 <body>
 
- <header class="topbar">
+  <header class="topbar">
     <div class="topbar-row">
       <h1>Exodus BOLCC Song List</h1>
-      <!-- Tambahkan pembungkus dan elemen select di sini -->
+      <!-- Tombol Filter Kategori & Search -->
       <div class="action-buttons">
         <select id="genreFilter" class="genre-select">
-          <option value="ALL">Category</option>
+          <option value="ALL">All</option>
         </select>
         <button id="btnSearchToggle" class="icon-btn-round" aria-label="Cari lagu">🔍</button>
       </div>

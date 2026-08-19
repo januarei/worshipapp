@@ -4,20 +4,24 @@ let currentSong = null;
 let transposeSteps = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Ambil data lagu
   google.script.run
     .withSuccessHandler(onSongsLoaded)
     .withFailureHandler(err => console.error('Gagal ambil daftar lagu:', err))
     .getSongList();
 
+  // Tombol search memunculkan input box
   document.getElementById('btnSearchToggle').addEventListener('click', toggleSearchBox);
   
-  // HAPUS event onSearch yang lama, GANTI dengan applyFilters untuk input text dan dropdown
+  // Event listener untuk Filter Pencarian Teks & Dropdown Kategori
   document.getElementById('searchInput').addEventListener('input', applyFilters);
   document.getElementById('genreFilter').addEventListener('change', applyFilters);
 
+  // Tombol Kembali
   document.getElementById('btnBack').addEventListener('click', showListView);
   document.getElementById('btnBackBottom').addEventListener('click', showListView);
 
+  // Modal Gambar
   document.getElementById('songThumb').addEventListener('click', () => openImageModal(currentSong.imageUrl));
   document.getElementById('imageModal').addEventListener('click', closeImageModal);
   document.getElementById('modalClose').addEventListener('click', closeImageModal);
@@ -33,13 +37,14 @@ function onSongsLoaded(songs) {
   // Urut ascending berdasarkan judul (A→Z)
   allSongs = [...songs].sort((a, b) =>
     a.judul.localeCompare(b.judul, 'id', { sensitivity: 'base' }));
-    
-  // LOGIKA BARU: Ambil semua genre yang ada, hapus duplikat, abaikan yang kosong
+  
+  // Ambil semua genre yang ada dari Google Sheet, hapus duplikat & abaikan yang kosong
   const genres = [...new Set(allSongs.map(s => s.genre).filter(Boolean))];
-  genres.sort(); // Urutkan nama genre sesuai abjad A-Z
+  genres.sort(); // Urutkan nama genre sesuai abjad
   
   // Masukkan genre ke dalam dropdown
   const genreSelect = document.getElementById('genreFilter');
+  genreSelect.innerHTML = '<option value="ALL">All</option>'; // Reset opsi
   genres.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g;
@@ -50,18 +55,14 @@ function onSongsLoaded(songs) {
   renderList(allSongs);
 }
 
-// FUNGSI BARU: Menggantikan fungsi onSearch() yang lama
+// Fungsi menggabungkan Filter Judul & Filter Genre
 function applyFilters() {
   const kw = document.getElementById('searchInput').value.toLowerCase();
   const selectedGenre = document.getElementById('genreFilter').value;
 
   const filtered = allSongs.filter(s => {
-    // Cek apakah judul cocok
     const matchKw = s.judul.toLowerCase().includes(kw);
-    // Cek apakah genre cocok (jika ALL, tampilkan semua)
-    const matchGenre = selectedGenre === "ALL" || s.genre === selectedGenre;
-    
-    // Lagu harus lolos kedua syarat
+    const matchGenre = (selectedGenre === "ALL") || (s.genre === selectedGenre);
     return matchKw && matchGenre;
   });
 
@@ -73,13 +74,11 @@ function renderList(songs) {
   const empty = document.getElementById('emptyState');
   ul.innerHTML = '';
 
-  // Pisahkan lagu yang di-pin dan tidak
   let pinnedSongs = songs.filter(s => s.pinned);
   const restSongs = songs.filter(s => !s.pinned);
 
-  // LOGIKA URUTAN: Urutkan pinnedSongs berdasarkan kolom 'urutan' secara ascending (1,2,3..)
+  // Logika urutan lagu yang di-PIN berdasarkan kolom urutan (kolom I)
   pinnedSongs.sort((a, b) => {
-    // Jika kolom urutan kosong atau bukan angka, berikan nilai 999 agar ditaruh di bawah
     const urutanA = parseInt(a.urutan) || 999;
     const urutanB = parseInt(b.urutan) || 999;
     return urutanA - urutanB;
@@ -88,7 +87,6 @@ function renderList(songs) {
   empty.style.display = (pinnedSongs.length + restSongs.length) ? 'none' : 'block';
 
   if (pinnedSongs.length) {
-    // Label diubah sesuai revisi sebelumnya
     ul.appendChild(sectionLabel('📌 Ibadah Minggu Ini'));
     pinnedSongs.forEach(s => ul.appendChild(buildSongItem(s)));
   }
@@ -110,11 +108,10 @@ function buildSongItem(s) {
   const li = document.createElement('li');
   const thumbSrc = s.imageUrl || '';
 
-  // Mengaplikasikan warna dari Sheet ke class title
   li.innerHTML = `
     ${thumbSrc ? `<img class="thumb" src="${thumbSrc}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb'}));">` : `<div class="thumb"></div>`}
     <span class="text-col">
-      <span class="title" style="color: ${s.color}">${s.judul}</span>
+      <span class="title">${s.judul}</span>
       <span class="sub">${s.author} • Key ${s.key}</span>
     </span>`;
 
@@ -132,14 +129,7 @@ function openSong(id) {
 function onSongLoaded(song) {
   currentSong = song;
   transposeSteps = 0;
-  
-  // Mengaplikasikan warna dari Sheet ke judul lagu di halaman detail
-  const titleEl = document.getElementById('songTitle');
-  titleEl.textContent = song.judul;
-  titleEl.style.color = song.color; 
-
-  // Mengaplikasikan warna dari Sheet ke area lirik (chordSheet)
-  document.getElementById('chordSheet').style.color = song.color;
+  document.getElementById('songTitle').textContent = song.judul;
 
   const thumb = document.getElementById('songThumb');
   if (song.imageUrl) {
@@ -150,10 +140,24 @@ function onSongLoaded(song) {
     thumb.style.display = 'none';
   }
 
+  // Tampilan Author, Genre, dan Tombol Mic
   document.getElementById('songMeta').innerHTML = `
     <div>Author: ${song.author}</div>
-    <div>Genre: ${song.genre}</div>
+    <div class="genre-row">
+      <span>Genre: ${song.genre}</span>
+      <button id="btnVocalMode" class="btn-vocal" title="Mode Singer (Hanya Lirik)">🎤</button>
+    </div>
   `;
+
+  // Event listener tombol Mode Vokal/Mic
+  document.getElementById('btnVocalMode').addEventListener('click', function() {
+    this.classList.toggle('active');
+    document.getElementById('chordSheet').classList.toggle('compact');
+  });
+
+  // Reset tampilan lirik ke default (bukan compact) saat memuat lagu baru
+  document.getElementById('chordSheet').classList.remove('compact');
+
   buildKeyButtons(song.key);
   renderChordSheet();
   showDetailView();
@@ -165,7 +169,6 @@ function renderChordSheet() {
   lines.forEach(line => {
     if (line.trim() === '') { html += '<br>'; return; }
     if (!line.includes('[')) {
-      // baris judul section, mis. "Verse 1:"
       html += `<span class="section-title">${line}</span>`;
       return;
     }
@@ -174,7 +177,6 @@ function renderChordSheet() {
   document.getElementById('chordSheet').innerHTML = html;
 }
 
-// ---------- Rendering chord+lirik jadi pasangan chord-di-atas-kata ----------
 function renderLine(line) {
   let html = '';
   const firstBracket = line.indexOf('[');
@@ -188,11 +190,11 @@ function renderLine(line) {
   }
   return html;
 }
+
 function pairHtml(chord, lyric) {
   return `<span class="pair"><span class="chord">${chord}</span><span class="lyric">${lyric}</span></span>`;
 }
 
-// ---------- Transpose ----------
 const SHARPS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const FLATS  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 
@@ -227,7 +229,6 @@ function transposeChord(chord, steps) {
   return SHARPS[newIdx] + mainRest + bassSuffix;
 }
 
-// ---------- Tombol pilihan key (C, C#, D, ... B) ----------
 const ALL_KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
 function buildKeyButtons(originalKeyStr) {
@@ -265,20 +266,16 @@ function getNoteIndex(keyStr) {
   return idx === -1 ? 0 : idx;
 }
 
-// ---------- Preview gambar fullscreen ----------
 function openImageModal(url) {
   if (!url) return;
   document.getElementById('modalImg').src = url;
   document.getElementById('imageModal').classList.add('active');
 }
 function closeImageModal(e) {
-  // klik di mana pun pada overlay (termasuk tombol X) akan menutup modal,
-  // tapi klik di atas gambar itu sendiri tidak menutup (biar bisa pinch-zoom)
   if (e.target.id === 'modalImg') return;
   document.getElementById('imageModal').classList.remove('active');
 }
 
-// ---------- Navigasi antar view ----------
 function showListView() {
   document.getElementById('view-list').classList.add('active');
   document.getElementById('view-detail').classList.remove('active');
