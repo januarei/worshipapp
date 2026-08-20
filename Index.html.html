@@ -9,7 +9,6 @@
   <header class="topbar">
     <div class="topbar-row">
       <h1>Exodus BOLCC Song List</h1>
-      <!-- Tombol Filter Kategori & Search -->
       <div class="action-buttons">
         <select id="genreFilter" class="genre-select">
           <option value="ALL">All</option>
@@ -23,13 +22,11 @@
   </header>
 
   <main id="app">
-    <!-- View: List Lagu -->
     <section id="view-list" class="view active">
       <ul id="songList" class="song-list"></ul>
       <p id="emptyState" class="empty-state" style="display:none;">Lagu tidak ditemukan.</p>
     </section>
 
-    <!-- View: Detail Lagu -->
     <section id="view-detail" class="view">
       <div class="detail-header">
         <h2 id="songTitle"></h2>
@@ -52,7 +49,6 @@
     </section>
   </main>
 
-  <!-- Modal fullscreen untuk preview gambar -->
   <div id="imageModal" class="image-modal">
     <span id="modalClose" class="modal-close">&times;</span>
     <img id="modalImg" class="modal-img" alt="Preview penuh">

@@ -19,7 +19,6 @@
   .topbar-row { display: flex; justify-content: space-between; align-items: center; }
   .topbar h1 { font-size: 18px; margin: 0; }
   
-  /* Desain tombol kategori (Genre) & icon Search */
   .action-buttons {
     display: flex;
     align-items: center;
@@ -160,7 +159,6 @@
   
   .pair .lyric { white-space: pre; }
   
-  /* Layout Genre Row & Tombol Mic (Mode Vokal) */
   .genre-row {
     display: flex;
     align-items: center;
@@ -186,7 +184,6 @@
     box-shadow: 0 0 5px rgba(37, 99, 235, 0.5); 
   }
   
-  /* Mode Vokal (Compact) */
   .chord-sheet.compact {
     line-height: 1.5; 
   }
@@ -201,5 +198,17 @@
   
   .chord-sheet.compact .section-title {
     margin: 12px 0 4px; 
+  }
+
+  .chord-sheet.compact .para-even,
+  .chord-sheet.compact .para-even .lyric,
+  .chord-sheet.compact .para-even .section-title {
+    color: #000000;
+  }
+  
+  .chord-sheet.compact .para-odd,
+  .chord-sheet.compact .para-odd .lyric,
+  .chord-sheet.compact .para-odd .section-title {
+    color: #2563eb; 
   }
 </style>

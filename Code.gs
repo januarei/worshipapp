@@ -8,7 +8,6 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// Dipakai Index.html untuk include CSS/JS
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
@@ -17,17 +16,11 @@ function getSheet_() {
   return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
 }
 
-// Ambil semua lagu untuk daftar beserta warnanya
 function getSongList() {
   const sheet = getSheet_();
-  const range = sheet.getDataRange();
-  const data = range.getValues();
-  const colors = range.getFontColors(); // Mengambil data warna teks
-  
-  data.shift(); // Hapus header
-  colors.shift(); // Hapus warna header biar sejajar
-  
-  return data.map((row, index) => ({
+  const data = sheet.getDataRange().getValues();
+  const header = data.shift();
+  return data.map(row => ({
     id: row[0],
     judul: row[1],
     author: row[2],
@@ -35,25 +28,16 @@ function getSongList() {
     key: row[4],
     imageUrl: row[6],
     pinned: row[7] === true,
-    urutan: row[8], // Tambahan fitur baca kolom I
-    color: colors[index][5] || '#222222' // Ambil warna dari kolom F (Lyrics)
+    urutan: row[8]
   }));
 }
 
-// Ambil 1 lagu lengkap dengan lirik+chord beserta warnanya berdasarkan ID
 function getSongById(id) {
   const sheet = getSheet_();
-  const range = sheet.getDataRange();
-  const data = range.getValues();
-  const colors = range.getFontColors();
-  
-  data.shift();
-  colors.shift();
-  
-  const index = data.findIndex(r => String(r[0]) === String(id));
-  if (index === -1) return null;
-  
-  const row = data[index];
+  const data = sheet.getDataRange().getValues();
+  const header = data.shift();
+  const row = data.find(r => String(r[0]) === String(id));
+  if (!row) return null;
   return {
     id: row[0],
     judul: row[1],
@@ -63,15 +47,6 @@ function getSongById(id) {
     lyrics: row[5],
     imageUrl: row[6],
     pinned: row[7] === true,
-    urutan: row[8], // Tambahan fitur baca kolom I
-    color: colors[index][5] || '#222222' // Ambil warna dari kolom F (Lyrics)
+    urutan: row[8]
   };
-}
-
-// Pencarian judul (server-side, dipanggil dari client)
-function searchSongs(keyword) {
-  const list = getSongList();
-  if (!keyword) return list;
-  const kw = keyword.toLowerCase();
-  return list.filter(s => s.judul.toLowerCase().includes(kw));
 }

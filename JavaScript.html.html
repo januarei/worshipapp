@@ -4,24 +4,19 @@ let currentSong = null;
 let transposeSteps = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Ambil data lagu
   google.script.run
     .withSuccessHandler(onSongsLoaded)
     .withFailureHandler(err => console.error('Gagal ambil daftar lagu:', err))
     .getSongList();
 
-  // Tombol search memunculkan input box
   document.getElementById('btnSearchToggle').addEventListener('click', toggleSearchBox);
   
-  // Event listener untuk Filter Pencarian Teks & Dropdown Kategori
   document.getElementById('searchInput').addEventListener('input', applyFilters);
   document.getElementById('genreFilter').addEventListener('change', applyFilters);
 
-  // Tombol Kembali
   document.getElementById('btnBack').addEventListener('click', showListView);
   document.getElementById('btnBackBottom').addEventListener('click', showListView);
 
-  // Modal Gambar
   document.getElementById('songThumb').addEventListener('click', () => openImageModal(currentSong.imageUrl));
   document.getElementById('imageModal').addEventListener('click', closeImageModal);
   document.getElementById('modalClose').addEventListener('click', closeImageModal);
@@ -34,17 +29,14 @@ function toggleSearchBox() {
 }
 
 function onSongsLoaded(songs) {
-  // Urut ascending berdasarkan judul (A→Z)
   allSongs = [...songs].sort((a, b) =>
     a.judul.localeCompare(b.judul, 'id', { sensitivity: 'base' }));
   
-  // Ambil semua genre yang ada dari Google Sheet, hapus duplikat & abaikan yang kosong
   const genres = [...new Set(allSongs.map(s => s.genre).filter(Boolean))];
-  genres.sort(); // Urutkan nama genre sesuai abjad
+  genres.sort();
   
-  // Masukkan genre ke dalam dropdown
   const genreSelect = document.getElementById('genreFilter');
-  genreSelect.innerHTML = '<option value="ALL">All</option>'; // Reset opsi
+  genreSelect.innerHTML = '<option value="ALL">All</option>';
   genres.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g;
@@ -55,7 +47,6 @@ function onSongsLoaded(songs) {
   renderList(allSongs);
 }
 
-// Fungsi menggabungkan Filter Judul & Filter Genre
 function applyFilters() {
   const kw = document.getElementById('searchInput').value.toLowerCase();
   const selectedGenre = document.getElementById('genreFilter').value;
@@ -77,7 +68,6 @@ function renderList(songs) {
   let pinnedSongs = songs.filter(s => s.pinned);
   const restSongs = songs.filter(s => !s.pinned);
 
-  // Logika urutan lagu yang di-PIN berdasarkan kolom urutan (kolom I)
   pinnedSongs.sort((a, b) => {
     const urutanA = parseInt(a.urutan) || 999;
     const urutanB = parseInt(b.urutan) || 999;
@@ -140,7 +130,6 @@ function onSongLoaded(song) {
     thumb.style.display = 'none';
   }
 
-  // Tampilan Author, Genre, dan Tombol Mic
   document.getElementById('songMeta').innerHTML = `
     <div>Author: ${song.author}</div>
     <div class="genre-row">
@@ -149,13 +138,11 @@ function onSongLoaded(song) {
     </div>
   `;
 
-  // Event listener tombol Mode Vokal/Mic
   document.getElementById('btnVocalMode').addEventListener('click', function() {
     this.classList.toggle('active');
     document.getElementById('chordSheet').classList.toggle('compact');
   });
 
-  // Reset tampilan lirik ke default (bukan compact) saat memuat lagu baru
   document.getElementById('chordSheet').classList.remove('compact');
 
   buildKeyButtons(song.key);
@@ -166,14 +153,38 @@ function onSongLoaded(song) {
 function renderChordSheet() {
   const lines = currentSong.lyrics.split('\n');
   let html = '';
+  
+  let paragraphIndex = 0;
+  let newPara = true;
+
   lines.forEach(line => {
-    if (line.trim() === '') { html += '<br>'; return; }
-    if (!line.includes('[')) {
-      html += `<span class="section-title">${line}</span>`;
+    if (line.trim() === '') {
+      if (!newPara) {
+        html += `</div>`; 
+        paragraphIndex++; 
+        newPara = true;
+      }
+      html += `<br>`; 
       return;
     }
-    html += renderLine(transposeLine(line, transposeSteps)) + '<br>';
+
+    if (newPara) {
+      const isEven = paragraphIndex % 2 === 0;
+      html += `<div class="lyric-para ${isEven ? 'para-even' : 'para-odd'}">`;
+      newPara = false;
+    }
+
+    if (!line.includes('[')) {
+      html += `<span class="section-title">${line}</span>`;
+    } else {
+      html += renderLine(transposeLine(line, transposeSteps)) + '<br>';
+    }
   });
+
+  if (!newPara) {
+    html += `</div>`;
+  }
+  
   document.getElementById('chordSheet').innerHTML = html;
 }
 
